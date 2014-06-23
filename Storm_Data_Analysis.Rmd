@@ -1,0 +1,146 @@
+## Human and Economic Costs of Severe Weather Events - An analysis of NOAA's storm database.
+============================================================================================
+
+This document explores the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major stroms and weather events in the U.S, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage. The main objective of this analysis is to find out which types of weather events are most harmful with respect to population health, in terms of number of fatalities and injuries, and also, which types of weather events have the greatest economic consequences, in terms of property and crop damage. 
+
+### Data Proccessing
+
+The storm database is read into the dataframe storm. The file 'repdata-data-StormData.csv.bz2' should be present in the directory.
+
+```{r, cache = TRUE}
+storm = read.csv(bzfile('repdata-data-StormData.csv.bz2'))
+head(storm)
+```
+
+```{r}
+obs = dim(storm)[1]
+var = dim(storm)[2]
+```
+
+The dataset contains `r var` variables and `r obs` observations. The most relevant variables for this analysis is EVTYPE, the type of weather event, FATALITIES and INJURIES, number of fatalities and injuries caused by the weather event, and PROPDMG and CROPDMG, the amount of property and crop damage in dollar units indicated in the variables PROPDMGEXP and CROPDMGEXP.
+
+In order to find out the type of weather event that is most harmful to the health of the population, a new dataframe storm_health is created that summarizes the total number of fatalities and injuries for each type of weather event.
+
+```{r, cache = TRUE}
+library(plyr)
+storm_health = ddply(storm, 'EVTYPE', summarize, Fatalities = sum(FATALITIES), Injuries = sum(INJURIES))
+head(storm_health)
+```
+
+Now, consider the economic consequences in terms of property and crop damage. The variables PROPDMG and CROPDMG are estimates of the property and crop damage in units of K ($1000), m or M ($1000,000), and B ($1000,000,000) as given in the variables PROPDMGEXP and CROPDMGEXP. First, the PROPDMG and CROPDMG variables must be converted to units of dollars.
+
+```{r, cache = TRUE}
+storm[storm$PROPDMGEXP == 'B', ]$PROPDMG = storm[storm$PROPDMGEXP == 'B', ]$PROPDMG*1000000000
+storm[storm$PROPDMGEXP %in% c('m', 'M'), ]$PROPDMG = 
+    storm[storm$PROPDMGEXP %in% c('m', 'M'), ]$PROPDMG*1000000
+storm[storm$PROPDMGEXP == 'K', ]$PROPDMG = storm[storm$PROPDMGEXP == 'K', ]$PROPDMG*1000
+
+storm[storm$CROPDMGEXP == 'B', ]$CROPDMG = storm[storm$CROPDMGEXP == 'B', ]$CROPDMG*1000000000
+storm[storm$CROPDMGEXP %in% c('m', 'M'), ]$CROPDMG = 
+    storm[storm$CROPDMGEXP %in% c('m', 'M'), ]$CROPDMG*1000000
+storm[storm$CROPDMGEXP == 'K', ]$CROPDMG = storm[storm$CROPDMGEXP == 'K', ]$CROPDMG*1000
+```
+
+The total property and crop damage in dollar amounts are then summed up for each type of weather event as before, in order to find out the weather events that cause the maximum amounts of property and crop damage.
+
+```{r, cache = TRUE}
+storm_econ = ddply(storm, 'EVTYPE', summarize, PropDmg = sum(PROPDMG), CropDmg = sum(CROPDMG))
+head(storm_econ)
+```
+
+### Results
+
+The 10 weather event types with the highest number of fatalities and injuries can be found as follows.
+
+```{r, cache = TRUE}
+storm_health1 = storm_health[order(storm_health$Fatalities, decreasing = TRUE), ]
+storm_health1 = storm_health1[1:10, ]
+storm_health1
+storm_health2 = storm_health[order(storm_health$Injuries, decreasing = TRUE), ]
+storm_health2 = storm_health2[1:10, ]
+storm_health2
+```
+
+The above information is plotted in the following figure.
+
+```{r fig.width = 10, fig.height = 5, cache = TRUE}
+par(mfrow = c(1, 2))
+plot(storm_health1$EVTYPE, storm_health1$Fatalities, pch = 19, cex = 2, 
+     xaxt = 'n', ylim = c(0, 6000),  
+     xlab = 'Weather Event Types', ylab = 'Number of Fatalities')
+text(storm_health1$EVTYPE, storm_health1$Fatalities, storm_health1$EVTYPE, 
+     pos = 3, cex = 0.8, col = 'red')
+plot(storm_health2$EVTYPE, storm_health2$Injuries, pch = 19, cex = 2, 
+     xaxt = 'n', ylim = c(1000, 100000),
+     xlab = 'Weather Event Types', ylab = 'Number of Injuries')
+text(storm_health2$EVTYPE, storm_health2$Injuries, storm_health2$EVTYPE, 
+     pos = 3, cex = 0.8, col = 'red')
+```
+
+Figure: The 10 weather event types with the highest number of fatalities and injuries.
+
+```{r}
+maxfat = storm_health1$EVTYPE[1]
+maxinj = storm_health2$EVTYPE[1]
+```
+
+The weather event with the largest number of fatalities and injuries are `r maxfat` and `r maxinj`, respectively.
+
+Similarly, the 10 weather event types that has the highest amount of property and crop damage can be found as follows.
+
+```{r, cache = TRUE}
+storm[storm$PROPDMGEXP == 'B', ]$PROPDMG = storm[storm$PROPDMGEXP == 'B', ]$PROPDMG*1000000000
+storm[storm$PROPDMGEXP %in% c('m', 'M'), ]$PROPDMG = 
+    storm[storm$PROPDMGEXP %in% c('m', 'M'), ]$PROPDMG*1000000
+storm[storm$PROPDMGEXP == 'K', ]$PROPDMG = storm[storm$PROPDMGEXP == 'K', ]$PROPDMG*1000
+
+storm[storm$CROPDMGEXP == 'B', ]$CROPDMG = storm[storm$CROPDMGEXP == 'B', ]$CROPDMG*1000000000
+storm[storm$CROPDMGEXP %in% c('m', 'M'), ]$CROPDMG = 
+    storm[storm$CROPDMGEXP %in% c('m', 'M'), ]$CROPDMG*1000000
+storm[storm$CROPDMGEXP == 'K', ]$CROPDMG = storm[storm$CROPDMGEXP == 'K', ]$CROPDMG*1000
+```
+
+The total property and crop damage in dollar amounts are then summed up for each type of weather event as before, in order to find out the weather events that cause the maximum amounts of property and crop damage.
+
+```{r, cache = TRUE}
+library(plyr)
+storm_econ = ddply(storm, 'EVTYPE', summarize, PropDmg = sum(PROPDMG), CropDmg = sum(CROPDMG))
+```
+
+The 10 weather event types with the largest amounts of property and crop damage can be found as follows.
+
+```{r, cache = TRUE}
+storm_econ1 = storm_econ[order(storm_econ$PropDmg, decreasing = TRUE), ]
+storm_econ1 = storm_econ1[1:10, ]
+storm_econ1
+storm_econ2 = storm_econ[order(storm_econ$CropDmg, decreasing = TRUE), ]
+storm_econ2 = storm_econ2[1:10, ]
+storm_econ2
+```
+
+The above information is plotted in the following figure.
+
+```{r fig.width = 10, fig.height = 5, cache = TRUE}
+par(mfrow = c(1, 2)) 
+plot(storm_econ1$EVTYPE, log10(storm_econ1$PropDmg), pch = 19, cex = 2, 
+     xaxt = 'n', ylim = c(18, 20.5),
+     xlab = 'Weather Event Types', ylab = 'log10(Property Damage ($))')
+text(storm_econ1$EVTYPE, log10(storm_econ1$PropDmg), storm_econ1$EVTYPE, 
+     cex = 0.8, pos = 3, col = 'red')
+plot(storm_econ2$EVTYPE, log10(storm_econ2$CropDmg), pch = 19, cex = 2, 
+     xaxt = 'n', ylim = c(15, 19),
+     xlab = 'Weather Event Types', ylab = 'log10(Crop Damage ($))')
+text(storm_econ2$EVTYPE, log10(storm_econ2$CropDmg), storm_econ2$EVTYPE, 
+     cex = 0.8, pos = 3, col = 'red')
+
+```
+
+Figure: The 10 weather event types with the largest dollar amount of property and crop damage.
+
+```{r}
+maxpropdmg = storm_econ1$EVTYPE[1]
+maxcropdmg1 = storm_econ2$EVTYPE[1]
+maxcropdmg2 = storm_econ2$EVTYPE[2]
+```
+
+The weather event with the largest dollar amount of property is `r maxpropdmg`, while the weather events with the largest dollar amount of crop damage are tied between `r maxcropdmg1` and `r maxcropdmg2`.
